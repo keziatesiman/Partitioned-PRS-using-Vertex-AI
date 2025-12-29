@@ -1,68 +1,51 @@
-# Running Partitioned Polygenic Risk Scores on Google Vertex AI using PRSedm
+# Partitioned Polygenic Risk Scores on Vertex AI using PRSedm
 
-This repository demonstrates how to run **partitioned polygenic risk scores (PRS)** at scale using **PRSedm** on **Google Cloud Vertex AI**.
+This repository demonstrates how to run **partitioned polygenic risk scores (PRS)** using **PRSedm** on **Google Cloud Vertex AI**.
 
-Unlike conventional PRS pipelines that output a single aggregate score, **partitioned PRS decomposes genetic risk into biologically meaningful components**, enabling interpretation at the level of pathways and mechanisms. This tutorial shows how to operationalize such analyses in a cloud-native, reproducible way.
-
----
-
-## Why Partitioned PRS?
-
-Most common diseases, including Type 2 Diabetes (T2D), are highly polygenic. Thousands of genetic variants contribute small effects that, when aggregated, influence disease risk.
-
-A standard PRS answers:
-
-> *How high is an individual’s genetic risk?*
-
-A **partitioned PRS** goes further:
-
-> *Why is the risk high? Which biological processes contribute most?*
-
-For T2D, partitioned PRS can attribute risk across components such as:
-
-* beta-cell function and insulin secretion
-* obesity and adiposity
-* liver and lipid metabolism
-* metabolic syndrome
-* residual glycaemic mechanisms
-
-This makes partitioned PRS particularly valuable for:
-
-* mechanistic understanding of disease
-* personalized prevention strategies
-* moving PRS closer to clinical interpretability
+The pipeline computes both a total PRS and biologically partitioned components from VCF inputs, allowing genetic risk to be interpreted in terms of underlying biological pathways rather than as a single aggregate score.
 
 ---
 
-## What This Repository Provides
+## Background
 
-By the end of this tutorial, you will have:
+Many common diseases, including Type 2 Diabetes (T2D), are highly polygenic. Standard PRS methods summarise genetic risk into one number, which is useful for stratification but limited in interpretability.
 
-* A **Dockerized PRSedm runner** suitable for cloud execution
-* A **Vertex AI CustomJob** that scores a VCF stored in Google Cloud Storage
-* A **CSV output** containing partitioned PRS per individual
-* Example **visualizations** showing:
+Partitioned PRS extends this idea by decomposing the total score into biologically meaningful components, such as beta-cell function, obesity-related pathways, and lipid metabolism. This makes it possible to compare individuals with similar diagnoses but different underlying genetic drivers, and to better understand disease heterogeneity.
 
-  * pathway-level PRS decomposition
-  * population-level PRS distribution
-
-The pipeline is intentionally modular so that components can be reused in production or research environments.
+This repository focuses on the **practical execution** of partitioned PRS in a scalable and reproducible way, rather than on score construction itself.
 
 ---
 
-## High-Level Architecture
+## What this repository contains
 
-1. A bgzipped, indexed VCF is stored in Google Cloud Storage
-2. A custom Docker container runs PRSedm
-3. Vertex AI launches the container as a CustomJob
-4. PRSedm computes partitioned PRS
-5. Results are written back to Cloud Storage as a CSV
+The repository includes:
 
-This approach avoids local compute constraints and scales cleanly to larger cohorts.
+* A Docker image for running PRSedm in a cloud environment
+* A Vertex AI CustomJob configuration for executing PRSedm on Google Cloud
+* An example notebook showing how to run the pipeline end to end
+* Example visualisations of partitioned PRS outputs
+
+The code is organised so that the Docker, cloud execution, and analysis steps are clearly separated.
 
 ---
 
-## Repository Structure
+## Pipeline overview
+
+At a high level, the workflow is as follows:
+
+1. A bgzipped and indexed VCF is stored in Google Cloud Storage
+2. Vertex AI launches a CustomJob using a user-defined Docker image
+3. The container downloads the VCF and runs PRSedm
+4. Partitioned and total PRS are computed
+5. Results are written back to Cloud Storage as a CSV file
+
+The figure below shows the overall execution flow.
+
+![Pipeline overview](diagrams/prsedm_vertex_flow.jpeg)
+
+---
+
+## Repository structure
 
 ```text
 partitioned-prs-vertexai/
@@ -81,116 +64,50 @@ partitioned-prs-vertexai/
 ├── examples/
 │   └── sample_vcf_paths.md
 │
+├── diagrams/
+│   ├── prsedm_vertex_flow.png
+│   ├── partitioned_prs_radar_sample001.png
+│   └── t2d_prs_distribution_sample001.png
+│
 └── LICENSE
-```
 
-* **`docker/`** contains the minimal PRSedm execution environment
-* **`vertex/`** contains the Vertex AI job submission script
-* **`notebooks/`** contains the end-to-end walkthrough and visualization examples
 
 ---
 
-## Prerequisites
+## Example outputs
 
-Before running this pipeline, you will need:
+The pipeline produces a CSV with one row per individual, containing both the total PRS and the partition-level scores.
+
+### Partitioned PRS for a single individual
+
+The radar plot below shows the partitioned T2D PRS for one individual, highlighting the relative contribution of different biological components to overall genetic risk.
+
+![Partitioned PRS radar](diagrams/partitioned_prs_radar_sample001.png)
+
+---
+
+### Total PRS in population context
+
+Total PRS values are typically interpreted relative to a reference population. The figure below shows the distribution of total T2D PRS across participants, with one individual highlighted.
+
+![PRS distribution](diagrams/t2d_prs_distribution_sample001.png)
+
+---
+
+## Requirements
+
+To run this pipeline, you will need:
 
 * A Google Cloud project with billing enabled
-* `gcloud` CLI configured
 * Vertex AI API enabled
-* A bgzipped VCF (`.vcf.gz`) with a Tabix index (`.tbi`) stored in GCS
-* Basic familiarity with VCFs, GWAS, and PRS concepts
+* The `gcloud` CLI configured locally
+* A bgzipped VCF (`.vcf.gz`) and corresponding Tabix index (`.tbi`) stored in Google Cloud Storage
 
-No real genomic data is included in this repository.
-
----
-
-## Core Components
-
-### PRSedm Docker Runner
-
-The Docker image:
-
-* downloads a VCF (and index) from Cloud Storage
-* runs PRSedm with user-specified score sets
-* uploads the resulting CSV back to Cloud Storage
-
-This design allows PRSedm to run identically across local, cloud, and CI environments.
+No genomic data are included in this repository.
 
 ---
 
-### Vertex AI CustomJob
+## Notes
 
-Vertex AI is used to:
-
-* provision compute resources
-* execute the container
-* manage logs and failures
-
-The job configuration allows control over:
-
-* machine type
-* parallelization inside PRSedm
-* score selection
-
-This makes the pipeline suitable for both demos and large-scale analyses.
-
----
-
-## Running the Pipeline
-
-Once configured, the pipeline can be launched with a single command:
-
-```bash
-python vertex/submit_prsedm_job.py
-```
-
-Vertex AI will:
-
-* start the custom job
-* download the input VCF
-* compute partitioned PRS
-* write results back to Cloud Storage
-
----
-
-## Interpreting the Output
-
-The PRSedm output CSV contains:
-
-* one row per individual
-* partition-level PRS components
-* the total PRS
-
-The provided notebook demonstrates:
-
-* radar (spider) plots for pathway-level interpretation
-* population-level PRS distributions with individual overlays
-
-This layer is critical for translating PRS results into biologically meaningful insights.
-
----
-
-## Extensions and Variations
-
-Possible extensions include:
-
-* enabling genotype imputation with a reference VCF
-* swapping PRSedm score definitions
-* ancestry-specific PRS evaluation
-* cohort-scale execution using larger machine types
-
-The pipeline is intentionally minimal to make these extensions straightforward.
-
----
-
-## Disclaimer
-
-This repository is intended for **research and educational purposes only**.
-It is **not** a clinical diagnostic tool.
-
----
-
-## Acknowledgements
-
-This tutorial uses the open-source **PRSedm** framework.
-All scientific credit for score construction belongs to the original PRSedm authors and underlying GWAS consortia.
+This repository is intended for research and methodological demonstration purposes.
+It is not intended for clinical use.

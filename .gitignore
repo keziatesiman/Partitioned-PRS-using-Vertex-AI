@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets
+.env
+
+# Local data
+*.vcf
+*.vcf.gz
+*.tbi
+*.csv
+
+# OS
+.DS_Store
