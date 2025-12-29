@@ -1,5 +1,7 @@
 # Partitioned Polygenic Risk Scores on Vertex AI using PRSedm
 
+**Author: Kezia Irene**
+
 This repository demonstrates how to run **partitioned polygenic risk scores (PRS)** using **PRSedm** on **Google Cloud Vertex AI**.
 
 The pipeline computes both a total PRS and biologically partitioned components from VCF inputs, allowing genetic risk to be interpreted in terms of underlying biological pathways rather than as a single aggregate score.
@@ -30,6 +32,7 @@ The code is organised so that the Docker, cloud execution, and analysis steps ar
 ---
 
 ## Pipeline overview
+![Pipeline overview](diagrams/prsedm_vertex_flow.jpeg)
 
 At a high level, the workflow is as follows:
 
@@ -40,8 +43,6 @@ At a high level, the workflow is as follows:
 5. Results are written back to Cloud Storage as a CSV file
 
 The figure below shows the overall execution flow.
-
-![Pipeline overview](diagrams/prsedm_vertex_flow.jpeg)
 
 ---
 
@@ -68,9 +69,10 @@ partitioned-prs-vertexai/
 │   ├── prsedm_vertex_flow.png
 │   ├── partitioned_prs_radar_sample001.png
 │   └── t2d_prs_distribution_sample001.png
+│   └── vertex_ai_custom_job_success.png
 │
 └── LICENSE
-
+```
 
 ---
 
@@ -94,6 +96,24 @@ Total PRS values are typically interpreted relative to a reference population. T
 
 ---
 
+
+## Vertex AI execution
+
+PRSedm is executed as a Vertex AI CustomJob using a user-defined Docker image.
+When the pipeline completes successfully, the job appears in the Vertex AI console
+with full metadata, including container image, input arguments, region, and logs.
+
+An example completed job is shown below.
+
+![Vertex AI CustomJob completed](diagrams/vertex_ai_custom_job_success.png)
+
+
+The job runs a single worker that downloads the input VCF from Cloud Storage,
+executes PRSedm with the specified score set, and writes the resulting PRS CSV
+back to Cloud Storage.
+
+
+
 ## Requirements
 
 To run this pipeline, you will need:
@@ -111,3 +131,5 @@ No genomic data are included in this repository.
 
 This repository is intended for research and methodological demonstration purposes.
 It is not intended for clinical use.
+
+
